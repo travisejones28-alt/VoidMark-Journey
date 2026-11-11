@@ -66,4 +66,21 @@ P.level=60; J.Refresh(); assert(VoidMarkJourneyFrame.Pace:GetText():find('Max le
 SlashCmdList.VOIDMARKJOURNEY(''); eq(VoidMarkJourneyDB.settings.shown,false,'hide not saved')
 SlashCmdList.VOIDMARKJOURNEY(''); eq(VoidMarkJourneyDB.settings.shown,true,'show not saved')
 SlashCmdList.VOIDMARKJOURNEY('lock'); eq(VoidMarkJourneyDB.settings.locked,true,'lock')
-print('PASS: XP/hr + level crossing, dings/deaths/played, rested bubbles, sleeping bag countdown + single alert, alts offline rested, secrets, slash commands')
+-- Flicker: hidden/blocked aura reads must not reset and re-fire the 3/3 alert.
+BAGCOUNT=1; local before=alerts
+AURA={applications=3}; Emit('UNIT_AURA','player')
+local real=C_UnitAuras.GetPlayerAuraBySpellID
+for i=1,5 do
+  C_UnitAuras.GetPlayerAuraBySpellID=function() error('Auras cannot be accessed when secret') end; Emit('UNIT_AURA','player')
+  C_UnitAuras.GetPlayerAuraBySpellID=function() return SECRET end; Emit('UNIT_AURA','player')
+  C_UnitAuras.GetPlayerAuraBySpellID=real; Emit('UNIT_AURA','player')
+end
+eq(alerts-before<=1,true,'alert repeated on hidden reads')
+local after=alerts
+-- Even a real drop and re-gain within 30 minutes doesn't alert again.
+AURA=nil; Emit('UNIT_AURA','player'); Advance(60); AURA={applications=3}; Emit('UNIT_AURA','player')
+eq(alerts,after,'re-alerted within 30 minutes')
+-- A new bag session an hour later alerts again.
+AURA=nil; Emit('UNIT_AURA','player'); Advance(3600); AURA={applications=3}; Emit('UNIT_AURA','player')
+eq(alerts,after+1,'new session did not alert'); AURA=nil; Emit('UNIT_AURA','player')
+print('PASS: no repeat bag alerts on hidden reads, XP/hr + level crossing, dings/deaths/played, rested bubbles, sleeping bag countdown + single alert, alts offline rested, secrets, slash commands')

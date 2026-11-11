@@ -4,7 +4,7 @@
 local addonName = ...
 VoidMarkJourney = VoidMarkJourney or {}
 local J = VoidMarkJourney
-J.VERSION = "0.1.0"
+J.VERSION = "0.1.1"
 
 local BAG_ITEM = 211527          -- Cozy Sleeping Bag
 local WELL_RESTED = 429959       -- Well-Rested (+1% XP per stack)
@@ -147,21 +147,25 @@ end
 ---------------------------------------------------------------------------
 -- Cozy Sleeping Bag / Well-Rested
 ---------------------------------------------------------------------------
+-- Returns stacks, expiration, known. known=false means the client hid the
+-- answer (secret/blocked, e.g. in combat) - that is NOT the same as "no buff".
 local function WellRested()
     if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
-        local aura = Safe(C_UnitAuras.GetPlayerAuraBySpellID, WELL_RESTED)
+        local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, WELL_RESTED)
+        if not ok or (aura ~= nil and Readable(aura) == nil) then return bag.stacks or 0, nil, false end
         if type(aura) == "table" then
             local stacks = tonumber(Readable(aura.applications)) or 1
-            return math.max(stacks, 1), tonumber(Readable(aura.expirationTime))
+            return math.max(stacks, 1), tonumber(Readable(aura.expirationTime)), true
         end
-        return 0
+        return 0, nil, true
     end
     for i = 1, 40 do
-        local name, _, count, _, _, expires, _, _, _, spellId = Safe(UnitBuff, "player", i)
+        local ok, name, _, count, _, _, expires, _, _, _, spellId = pcall(UnitBuff, "player", i)
+        if not ok or (name ~= nil and Readable(name) == nil) then return bag.stacks or 0, nil, false end
         if not name then break end
-        if tonumber(spellId) == WELL_RESTED then return math.max(tonumber(count) or 1, 1), tonumber(expires) end
+        if tonumber(Readable(spellId)) == WELL_RESTED then return math.max(tonumber(Readable(count)) or 1, 1), tonumber(Readable(expires)), true end
     end
-    return 0
+    return 0, nil, true
 end
 
 local function BagCooldown()
@@ -187,11 +191,16 @@ local function BagAlert()
     if PlaySound then pcall(PlaySound, (SOUNDKIT and SOUNDKIT.READY_CHECK) or 8960, "Master") end
 end
 
+local ALERT_GAP = 1800   -- at most one 3/3 alert per 30 minutes (bag cooldown is 1 hour)
 local function OnAura()
-    local stacks = WellRested()
+    local stacks, _, known = WellRested()
+    if not known then return end          -- hidden read: keep what we had
     if stacks > bag.stacks then
         bag.stackAt = GetTime()
-        if stacks >= WELL_RESTED_MAX and not bag.alerted then bag.alerted = true; BagAlert() end
+        if stacks >= WELL_RESTED_MAX and not bag.alerted
+            and (not bag.alertAt or GetTime() - bag.alertAt > ALERT_GAP) then
+            bag.alerted = true; bag.alertAt = GetTime(); BagAlert()
+        end
     elseif stacks == 0 then
         bag.alerted = false; bag.stackAt = nil
     end
@@ -421,6 +430,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
         session.start = GetTime(); session.gained = 0; session.samples = {}
         lastXP, lastMax = Safe(UnitXP, "player"), Safe(UnitXPMax, "player")
         bag.stacks = WellRested(); bag.alerted = bag.stacks >= WELL_RESTED_MAX
+        if bag.alerted then bag.alertAt = GetTime() end
         Snapshot()
         BuildUI()
         if DB.settings.shown then frame:Show() else frame:Hide() end
