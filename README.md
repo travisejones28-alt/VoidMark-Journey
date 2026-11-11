@@ -1,0 +1,20 @@
+# VoidMark Journey
+
+Leveling companion for **WoW Forever**. Made to sit next to Questie and RestedXP guides —
+it doesn't touch quests or routes, only the numbers they don't show.
+
+- **XP/hour and time to level** — based on your last 10 minutes, handles level-ups.
+- **Rested XP** — amount and bubbles, shown as a blue overlay on the XP bar.
+- **Cozy Sleeping Bag** — `Well-Rested 2/3 · next in 0:41`, a sound + raid-warning alert at 3/3,
+  and the bag cooldown when you're not using it.
+- **Alts** — every character's level and rested XP, including rested built up while logged out.
+- **Dings** — each level with date, zone, time played that level, and deaths.
+
+## Commands
+`/journey` (or `/vmj`) show/hide · `/journey alts` · `/journey dings` · `/journey lock` ·
+`/journey reset` (restart XP/hr) · `/journey bagalert` (toggle the 3/3 alert)
+
+Drag the window to move it. Saved per account in `VoidMarkJourneyDB`.
+
+## Tests
+`pip install lupa==2.8` then `python tests/validate.py`.
