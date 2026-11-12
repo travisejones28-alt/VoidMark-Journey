@@ -80,7 +80,11 @@ local after=alerts
 -- Even a real drop and re-gain within 30 minutes doesn't alert again.
 AURA=nil; Emit('UNIT_AURA','player'); Advance(60); AURA={applications=3}; Emit('UNIT_AURA','player')
 eq(alerts,after,'re-alerted within 30 minutes')
--- A new bag session an hour later alerts again.
+-- An hour later, the buff "reappearing" at 3/3 (false missing read mid-fight) must NOT alert.
 AURA=nil; Emit('UNIT_AURA','player'); Advance(3600); AURA={applications=3}; Emit('UNIT_AURA','player')
-eq(alerts,after+1,'new session did not alert'); AURA=nil; Emit('UNIT_AURA','player')
+eq(alerts,after,'alerted on a buff that reappeared at 3/3')
+-- A real new bag session (watched 1 -> 2 -> 3) alerts again.
+AURA=nil; Emit('UNIT_AURA','player'); Advance(600)
+for n=1,3 do AURA={applications=n}; Emit('UNIT_AURA','player'); Advance(60) end
+eq(alerts,after+1,'new bag session did not alert'); AURA=nil; Emit('UNIT_AURA','player')
 print('PASS: no repeat bag alerts on hidden reads, XP/hr + level crossing, dings/deaths/played, rested bubbles, sleeping bag countdown + single alert, alts offline rested, secrets, slash commands')

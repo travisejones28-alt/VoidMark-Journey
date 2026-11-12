@@ -4,7 +4,7 @@
 local addonName = ...
 VoidMarkJourney = VoidMarkJourney or {}
 local J = VoidMarkJourney
-J.VERSION = "0.1.1"
+J.VERSION = "0.1.2"
 
 local BAG_ITEM = 211527          -- Cozy Sleeping Bag
 local WELL_RESTED = 429959       -- Well-Rested (+1% XP per stack)
@@ -195,10 +195,16 @@ local ALERT_GAP = 1800   -- at most one 3/3 alert per 30 minutes (bag cooldown i
 local function OnAura()
     local stacks, _, known = WellRested()
     if not known then return end          -- hidden read: keep what we had
+    local now = GetTime()
+    if stacks > 0 and stacks < WELL_RESTED_MAX then bag.buildingAt = now end
     if stacks > bag.stacks then
-        bag.stackAt = GetTime()
-        if stacks >= WELL_RESTED_MAX and not bag.alerted
-            and (not bag.alertAt or GetTime() - bag.alertAt > ALERT_GAP) then
+        bag.stackAt = now
+        -- Only alert if we watched the stacks build (1/3 or 2/3 in the last 3 min).
+        -- Forever sometimes reports the buff missing for a moment; a buff that just
+        -- "reappears" at 3/3 must never trigger the alert.
+        local built = bag.buildingAt and now - bag.buildingAt <= 180
+        if stacks >= WELL_RESTED_MAX and built and not bag.alerted
+            and (not bag.alertAt or now - bag.alertAt > ALERT_GAP) then
             bag.alerted = true; bag.alertAt = GetTime(); BagAlert()
         end
     elseif stacks == 0 then
