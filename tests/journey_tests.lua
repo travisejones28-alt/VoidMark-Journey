@@ -56,7 +56,9 @@ SlashCmdList.VOIDMARKJOURNEY('alts')
 local body=VoidMarkJourneyList.Body:GetText()
 assert(body:find('Voidmark Bank') and body:find('full rested') and body:find('Voidmark Soulreaver'),body)
 SlashCmdList.VOIDMARKJOURNEY('dings')
-assert(VoidMarkJourneyList.Body:GetText():find('Lv 21'),'dings list')
+local hr=J.HistoryRows(); assert(hr[1] and hr[1][1]:find('Lv 21'),'dings list')
+eq(#hr[1],5,'history columns'); eq(hr[1][3],'Stranglethorn Vale','history zone column')
+assert(not hr[1][4]:find('played'),'played column is just the time')
 
 -- Secret XP values never crash the window.
 P.xp=SECRET; Emit('PLAYER_XP_UPDATE','player'); J.Refresh(); P.xp=500

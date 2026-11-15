@@ -4,7 +4,7 @@
 local addonName = ...
 VoidMarkJourney = VoidMarkJourney or {}
 local J = VoidMarkJourney
-J.VERSION = "0.1.3"
+J.VERSION = "0.1.4"
 
 local BAG_ITEM = 211527          -- Cozy Sleeping Bag
 local WELL_RESTED = 429959       -- Well-Rested (+1% XP per stack)
@@ -282,6 +282,26 @@ local function SmallButton(parent, label, width)
     return b
 end
 
+-- One row per ding, already split into columns: level, date, zone, played, deaths.
+function J.HistoryRows()
+    local rows = {}
+    for i, d in ipairs((char and char.dings) or {}) do
+        if i > 12 then break end
+        local n = d.deaths or 0
+        rows[#rows + 1] = {
+            "|cffb88cffLv " .. (d.level or 0) .. "|r",
+            date("%b %d", d.at or 0),
+            d.zone or "?",
+            Duration(d.played),
+            n == 0 and "|cff7cff7c0|r" or (n >= 3 and ("|cffff6060" .. n .. "|r") or tostring(n)),
+        }
+    end
+    return rows
+end
+local COLS = { { x = 10, w = 40 }, { x = 52, w = 46 }, { x = 100, w = 124 }, { x = 226, w = 58, right = true }, { x = 290, w = 30, right = true } }
+local listCells = {}
+local HEAD = { "Level", "Date", "Zone", "Played", "Deaths" }
+
 local function ListLines(mode)
     local lines = {}
     if mode == "alts" then
@@ -298,11 +318,8 @@ local function ListLines(mode)
         end
         if #lines == 0 then lines[1] = "Log in on your other characters once to list them here." end
     else
-        for i, d in ipairs(char.dings) do
-            if i > 12 then break end
-            lines[#lines + 1] = string.format("|cffb88cffLv %d|r  %s  ·  %s  ·  %s played  ·  %d death%s",
-                d.level or 0, date("%b %d", d.at or 0), d.zone or "?", Duration(d.played),
-                d.deaths or 0, (d.deaths or 0) == 1 and "" or "s")
+        for _, row in ipairs(J.HistoryRows()) do
+            lines[#lines + 1] = table.concat(row, "  ")
         end
         if #lines == 0 then lines[1] = "Your level-ups will be listed here." end
     end
@@ -322,10 +339,40 @@ local function ShowList(mode)
         if list.Body.SetSpacing then list.Body:SetSpacing(3) end
     end
     list.mode = mode
-    local lines = ListLines(mode)
     list.Title:SetText(mode == "alts" and "CHARACTERS" or "LEVEL HISTORY")
-    list.Body:SetText(table.concat(lines, "\n"))
-    list:SetHeight(36 + #lines * 15)
+    for _, row in ipairs(listCells) do
+        for _, fs in ipairs(row) do fs:Hide() end
+    end
+    local rows = mode ~= "alts" and J.HistoryRows() or {}
+    if #rows > 0 then
+        -- Columns, one line per level, so nothing wraps onto a second line.
+        list.Body:SetText("")
+        table.insert(rows, 1, HEAD)
+        for r, row in ipairs(rows) do
+            listCells[r] = listCells[r] or {}
+            for c, col in ipairs(COLS) do
+                local fs = listCells[r][c]
+                if not fs then
+                    fs = list:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                    if fs.SetWordWrap then fs:SetWordWrap(false) end
+                    listCells[r][c] = fs
+                end
+                fs:ClearAllPoints()
+                fs:SetPoint("TOPLEFT", list, "TOPLEFT", col.x, -26 - (r - 1) * 15)
+                fs:SetWidth(col.w)
+                fs:SetJustifyH(col.right and "RIGHT" or "LEFT")
+                fs:SetText(r == 1 and ("|cff9a8fb0" .. row[c] .. "|r") or row[c])
+                fs:Show()
+            end
+        end
+        list:SetHeight(34 + #rows * 15)
+    else
+        local lines = ListLines(mode)
+        list.Body:SetText(table.concat(lines, "\n"))
+        local h = list.Body.GetStringHeight and list.Body:GetStringHeight()
+        if type(h) ~= "number" or h <= 0 then h = #lines * 15 end
+        list:SetHeight(36 + h)
+    end
     list:Show()
 end
 
