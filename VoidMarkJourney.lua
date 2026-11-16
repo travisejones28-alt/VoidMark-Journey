@@ -436,6 +436,9 @@ local function BuildUI()
     dings:SetScript("OnClick", function() ShowList("dings") end)
     local alts = SmallButton(frame, "Alts", 44); alts:SetPoint("RIGHT", dings, "LEFT", -4, 0)
     alts:SetScript("OnClick", function() ShowList("alts") end)
+    local help = SmallButton(frame, "?", 20); help:SetPoint("RIGHT", alts, "LEFT", -4, 0)
+    help:SetScript("OnClick", function() if _G.VoidMarkJourneyHelp then _G.VoidMarkJourneyHelp.Open() end end)
+    frame.HelpButton = help
 
     frame.Level = Text(frame, "GameFontHighlight", 10, -28)
     -- XP bar with a rested overlay behind it.
@@ -520,7 +523,8 @@ SlashCmdList.VOIDMARKJOURNEY = function(msg)
     elseif msg == "lock" then DB.settings.locked = not DB.settings.locked; Print(DB.settings.locked and "Window locked." or "Window unlocked.")
     elseif msg == "reset" then session.start = GetTime(); session.gained = 0; session.samples = {}; Print("XP/hour reset."); J.Refresh()
     elseif msg == "bagalert" then DB.settings.bagAlert = not DB.settings.bagAlert; Print("Sleeping bag alert " .. (DB.settings.bagAlert and "on." or "off."))
-    elseif msg == "help" then
-        Print("/journey - show/hide  ·  alts  ·  dings  ·  lock  ·  reset (XP/hr)  ·  bagalert")
+    elseif msg:match("^help") or msg == "faq" or msg == "commands" then
+        if _G.VoidMarkJourneyHelp then _G.VoidMarkJourneyHelp.Open(msg:match("^help%s+(.+)$")) return end
+        Print("/journey - show/hide  ·  alts  ·  dings  ·  lock  ·  reset (XP/hr)  ·  bagalert  ·  help")
     else J.Toggle() end
 end

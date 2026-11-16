@@ -12,7 +12,7 @@ it doesn't touch quests or routes, only the numbers they don't show.
 
 ## Commands
 `/journey` (or `/vmj`) show/hide · `/journey alts` · `/journey dings` · `/journey lock` ·
-`/journey reset` (restart XP/hr) · `/journey bagalert` (toggle the 3/3 alert)
+`/journey reset` (restart XP/hr) · `/journey bagalert` (toggle the 3/3 alert) · `/journey help` (or the **?** button: searchable FAQ and every command)
 
 Drag the window to move it. Saved per account in `VoidMarkJourneyDB`.
 

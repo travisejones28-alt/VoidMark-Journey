@@ -2,7 +2,8 @@
 ## Title: VoidMark Journey
 ## Notes: Leveling companion: XP/hour, time to level, rested XP, Cozy Sleeping Bag timer, alts and ding history.
 ## Author: VoidMark
-## Version: 0.1.4
+## Version: 0.1.5
 ## SavedVariables: VoidMarkJourneyDB
+Help.lua
 VoidMarkJourney.lua
 AutoInvite.lua
