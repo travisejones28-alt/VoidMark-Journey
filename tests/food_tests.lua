@@ -30,6 +30,7 @@ BUFFS={{spellId=429959,expirationTime=NOW+3000,duration=3600},{spellId=7777,expi
 Emit('UNIT_AURA','player')
 eq(S.foodBuffs[999],7777,'learned XP buff')
 assert(btn.Time:GetText():find('30m') or btn.Time:GetText():find('29m'),'countdown: '..btn.Time:GetText())
+Advance(1); assert(not btn:IsShown(),'icon hides while food buff has plenty of time')
 
 -- Forever hiding auras mid-countdown: no false expired alert.
 local saved=BUFFS
@@ -43,6 +44,7 @@ Advance(1800-30-60-5)
 eq(alerts,a0,'warned too early')
 for i=1,10 do Advance(1) end
 eq(alerts,a0+1,'60 sec warning'); assert(printed[#printed]:find('runs out in'),printed[#printed])
+assert(btn:IsShown(),'icon pops up in the last minute')
 assert(btn.Time:GetText():find('0:'),'last-minute clock')
 BUFFS={}; for i=1,70 do Advance(1) end
 eq(alerts,a0+2,'expired alert once'); assert(printed[#printed]:find('Savory Leveling Stew expired'),printed[#printed])
@@ -51,6 +53,7 @@ for i=1,60 do Advance(1) end; eq(alerts,a0+2,'expired alert repeated')
 
 -- Eat again (buff known now): countdown restarts, alerts re-arm.
 BUFFS={{spellId=7777,expirationTime=NOW+1800,duration=1800}}; Emit('UNIT_AURA','player')
+assert(not btn:IsShown(),'icon hides after eating')
 eq(VoidMarkJourneyDB.characters['Voidmark Soulreaver - CAMWOW US2'].food.warned,false,'re-armed')
 -- Died / cancelled: gone for 15s+ counts as expired.
 BUFFS={}; for i=1,20 do Advance(1) end
@@ -61,6 +64,14 @@ SlashCmdList.VOIDMARKJOURNEY('foodalert'); eq(S.foodAlert,false)
 BUFFS={{spellId=7777,expirationTime=NOW+100,duration=1800}}; Emit('UNIT_AURA','player'); BUFFS={}
 for i=1,120 do Advance(1) end; eq(alerts,a0+3,'alert while off'); SlashCmdList.VOIDMARKJOURNEY('foodalert')
 
+-- Combat: can't hide a secure button, so it waits for combat to end.
+BUFFS={}; for i=1,20 do Advance(1) end; assert(btn:IsShown(),'shown when expired')
+COMBAT=true; BUFFS={{spellId=7777,expirationTime=NOW+1800,duration=1800}}; Emit('UNIT_AURA','player')
+assert(btn:IsShown(),'hid in combat'); COMBAT=false; Emit('PLAYER_REGEN_ENABLED'); assert(not btn:IsShown(),'hid after combat')
+BUFFS={}; for i=1,20 do Advance(1) end
+-- Max level: never needed.
+local c=VoidMarkJourneyDB.characters['Voidmark Soulreaver - CAMWOW US2']; local lv=c.level
+c.level=60; Advance(1); assert(not btn:IsShown(),'shown at max level'); c.level=lv; Advance(1)
 -- Out of food in bags.
 ITEMS[999].count=0; J.Food.Update(); assert(btn.Time:GetText():find('none left')); ITEMS[999].count=5
 -- Combat: setting waits, attribute untouched.

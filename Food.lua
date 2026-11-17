@@ -19,6 +19,7 @@ local learn            -- { at = GetTime(), before = {spellId=true} }
 local missingSince
 local pending          -- attribute change waiting for combat to end
 local dropping         -- food dropped on the icon by a click
+local syncLater        -- show/hide waiting for combat to end
 
 local function settings() return J.DB.settings end
 local function state()
@@ -174,7 +175,7 @@ function Food.Set(itemId)
     local s = state(); s.expiresAt, s.warned, s.ended = nil, false, false
     ApplyItem()
     J.Print("XP food set: " .. ItemName(itemId) .. ". Click the icon to eat it.")
-    Food.Update()
+    Food.Update(); Food.Sync()
 end
 
 function Food.Clear()
@@ -182,7 +183,7 @@ function Food.Clear()
     if J.char then J.char.food = nil end
     ApplyItem()
     J.Print("XP food cleared. Drag a food onto the icon to set it.")
-    Food.Update()
+    Food.Update(); Food.Sync()
 end
 
 function Food.Update()
@@ -211,6 +212,34 @@ function Food.Update()
         if s.expiresAt and time() - s.expiresAt < 30 and not flash then r, g, b = 0.48, 0.20, 0.68 end
     end
     if btn.SetBackdropBorderColor then btn:SetBackdropBorderColor(r, g, b, 1) end
+end
+
+-- Only show the icon when you need it: no food set yet, last minute of the
+-- buff, or the buff is gone. Hidden at max level.
+local function Needed()
+    if not settings().foodItem then return true end
+    local c = J.char
+    local max = J.Safe(GetMaxPlayerLevel) or 60
+    if c and (c.level or 0) >= max then return false end
+    local left = Food.Remaining()
+    return not left or left <= WARN_AT
+end
+Food.Needed = Needed
+
+function Food.Sync()
+    if not btn then return end
+    local want = settings().foodShown and Needed() or false
+    if want == (btn:IsShown() and true or false) then syncLater = nil; return end
+    -- Don't yank it away while you're dropping food on it or moving it.
+    if not want and btn.IsMouseOver and btn:IsMouseOver() then return end
+    if InCombat() then syncLater = true; return end -- secure button: can't show/hide in combat
+    syncLater = nil
+    if want then btn:Show(); Food.Update()
+    else
+        btn:StopMovingOrSizing()
+        if GameTooltip and GameTooltip.GetOwner and GameTooltip:GetOwner() == btn then GameTooltip:Hide() end
+        btn:Hide()
+    end
 end
 
 local function Tooltip(self)
@@ -309,7 +338,10 @@ function Food.Toggle(show)
     Build()
     if show == nil then show = not btn:IsShown() end
     settings().foodShown = show and true or false
-    if show then btn:Show(); Food.Update() else btn:Hide() end
+    if show then
+        Food.Sync()
+        if not btn:IsShown() then J.Print("Food icon on - it pops up when your XP food has 1 minute left or runs out.") end
+    else btn:Hide() end
 end
 
 ---------------------------------------------------------------------------
@@ -323,19 +355,20 @@ events:SetScript("OnEvent", function(_, event, unit, _, spell)
     if not J.char then return end
     if event == "PLAYER_LOGIN" then
         Build()
-        if settings().foodShown then btn:Show() else btn:Hide() end
-        Food.Update()
+        btn:Hide()
+        Food.Update(); Food.Sync()
         if C_Timer and C_Timer.NewTicker then
-            ticker = C_Timer.NewTicker(1, function() Check(); if btn:IsShown() then Food.Update() end end)
+            ticker = C_Timer.NewTicker(1, function() Check(); Food.Sync(); if btn:IsShown() then Food.Update() end end)
         end
     elseif event == "PLAYER_REGEN_ENABLED" then
         if pending then ApplyItem() end
+        if syncLater then Food.Sync() end
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         -- Ate the food from the bags instead of the icon: still learn its buff.
         local item = settings().foodItem
         if unit == "player" and item and not learn and tonumber(J.Readable(spell)) == ItemSpell(item) then StartLearning() end
     elseif event == "UNIT_AURA" then
-        if unit == "player" then Check(); Food.Update() end
+        if unit == "player" then Check(); Food.Sync(); Food.Update() end
     else
         Food.Update()
     end

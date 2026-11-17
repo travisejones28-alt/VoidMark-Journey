@@ -7,7 +7,7 @@ it doesn't touch quests or routes, only the numbers they don't show.
 - **Rested XP** — amount and bubbles, shown as a blue overlay on the XP bar.
 - **Cozy Sleeping Bag** — `Well-Rested 2/3 · next in 0:41`, a sound + raid-warning alert at 3/3,
   and the bag cooldown when you're not using it.
-- **XP food reminder** — click **Food** for a small icon: drag your XP food onto it, left-click to eat.
+- **XP food reminder** — click **Food** for a small icon: drag your XP food onto it, left-click to eat. It stays hidden while the buff is up and pops up with 1 minute left or when it runs out.
   Counts down the buff and alerts (sound + raid warning) at 60 sec left and when it runs out.
   Shift+drag to move, Shift+right-click to clear.
 - **Alts** — every character's level and rested XP, including rested built up while logged out.
