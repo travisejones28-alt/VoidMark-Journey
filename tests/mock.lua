@@ -18,10 +18,20 @@ function IsResting() return P.resting end
 function GetMaxPlayerLevel() return 60 end
 function GetZoneText() return P.zone end
 AURA=nil -- {applications=,expirationTime=}
-C_UnitAuras={GetPlayerAuraBySpellID=function(id) if id==429959 then return AURA end end}
+BUFFS={} -- list of {spellId=,expirationTime=,duration=}
+C_UnitAuras={GetPlayerAuraBySpellID=function(id) if id==429959 then return AURA end end,
+  GetAuraDataByIndex=function(u,i) if BUFFS==SECRET then error('secret') end return BUFFS[i] end}
+ITEMS={[999]={name='Savory Leveling Stew',count=5,spell=5005}}
+C_Item={GetItemIconByID=function(id) return 'icon'..id end, GetItemNameByID=function(id) return ITEMS[id] and ITEMS[id].name end,
+  GetItemSpell=function(id) if ITEMS[id] then return 'Food',ITEMS[id].spell end end}
+CURSOR=nil; COMBAT=false; SHIFT=false
+function GetCursorInfo() if CURSOR then return 'item',CURSOR end end
+function ClearCursor() CURSOR=nil end
+function InCombatLockdown() return COMBAT end
+function IsShiftKeyDown() return SHIFT end
 BAGCD={0,0}; BAGCOUNT=1
 C_Container={GetItemCooldown=function(id) return BAGCD[1],BAGCD[2],1 end}
-function GetItemCount() return BAGCOUNT end
+function GetItemCount(id) if ITEMS[id] then return ITEMS[id].count end return BAGCOUNT end
 printed={}; alerts=0; sounds=0
 DEFAULT_CHAT_FRAME={AddMessage=function(_,m) printed[#printed+1]=m end}
 RaidWarningFrame={}; function RaidNotice_AddMessage() alerts=alerts+1 end
@@ -44,6 +54,8 @@ local function obj()
     if k=='Hide' then return function(s) s._shown=false end end
     if k=='IsShown' then return function(s) return s._shown end end
     if k=='CreateFontString' or k=='CreateTexture' then return function() return obj() end end
+    if k=='SetAttribute' then return function(s,a,v) local t=rawget(s,'_attr') or {}; rawset(s,'_attr',t); t[a]=v end end
+    if k=='GetAttribute' then return function(s,a) local t=rawget(s,'_attr'); return t and t[a] end end
     if k=='GetPoint' then return function() return 'TOP',nil,'TOP',0,-140 end end
     if k=='SetHeight' then return function(s,h) s._h=h end end
     return function() end

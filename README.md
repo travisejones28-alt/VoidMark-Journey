@@ -7,12 +7,15 @@ it doesn't touch quests or routes, only the numbers they don't show.
 - **Rested XP** — amount and bubbles, shown as a blue overlay on the XP bar.
 - **Cozy Sleeping Bag** — `Well-Rested 2/3 · next in 0:41`, a sound + raid-warning alert at 3/3,
   and the bag cooldown when you're not using it.
+- **XP food reminder** — click **Food** for a small icon: drag your XP food onto it, left-click to eat.
+  Counts down the buff and alerts (sound + raid warning) at 60 sec left and when it runs out.
+  Shift+drag to move, Shift+right-click to clear.
 - **Alts** — every character's level and rested XP, including rested built up while logged out.
 - **Dings** — each level with date, zone, time played that level, and deaths.
 
 ## Commands
 `/journey` (or `/vmj`) show/hide · `/journey alts` · `/journey dings` · `/journey lock` ·
-`/journey reset` (restart XP/hr) · `/journey bagalert` (toggle the 3/3 alert) · `/journey help` (or the **?** button: searchable FAQ and every command)
+`/journey reset` (restart XP/hr) · `/journey bagalert` (toggle the 3/3 alert) · `/journey food` (food icon) · `/journey foodalert` · `/journey help` (or the **?** button: searchable FAQ and every command)
 
 Drag the window to move it. Saved per account in `VoidMarkJourneyDB`.
 

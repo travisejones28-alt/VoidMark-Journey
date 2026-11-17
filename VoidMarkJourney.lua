@@ -4,7 +4,7 @@
 local addonName = ...
 VoidMarkJourney = VoidMarkJourney or {}
 local J = VoidMarkJourney
-J.VERSION = "0.1.4"
+J.VERSION = "0.1.6"
 
 local BAG_ITEM = 211527          -- Cozy Sleeping Bag
 local WELL_RESTED = 429959       -- Well-Rested (+1% XP per stack)
@@ -36,6 +36,7 @@ local function Safe(fn, ...)
     return unpack(r, 2, r.n)
 end
 local function Print(msg) DEFAULT_CHAT_FRAME:AddMessage("|cffb86cff[Journey]|r " .. tostring(msg)) end
+J.Readable, J.Safe, J.Print = Readable, Safe, Print
 
 -- Forever names are "First Surname": UnitName returns the surname second.
 local function CharacterName()
@@ -66,6 +67,7 @@ local function Duration(sec)
     if sec < 86400 then return string.format("%dh %dm", math.floor(sec / 3600), math.floor(sec / 60) % 60) end
     return string.format("%dd %dh", math.floor(sec / 86400), math.floor(sec / 3600) % 24)
 end
+J.Clock, J.Duration = Clock, Duration
 
 local function MaxLevel()
     return Safe(GetMaxPlayerLevel) or 60
@@ -81,6 +83,7 @@ local function InitDB()
     DB.settings = type(DB.settings) == "table" and DB.settings or {}
     if DB.settings.shown == nil then DB.settings.shown = true end
     if DB.settings.bagAlert == nil then DB.settings.bagAlert = true end
+    if DB.settings.foodAlert == nil then DB.settings.foodAlert = true end
     local name, realm = CharacterName()
     key = name .. " - " .. realm
     DB.characters[key] = type(DB.characters[key]) == "table" and DB.characters[key] or {}
@@ -91,6 +94,7 @@ local function InitDB()
     char.levelDeaths = tonumber(char.levelDeaths) or 0
     local _, class = Safe(UnitClass, "player")
     char.class = class or char.class
+    J.DB, J.char = DB, char
 end
 
 local function Snapshot()
@@ -181,14 +185,16 @@ local function HasBag()
     return (tonumber(Safe(fn, BAG_ITEM)) or 0) > 0
 end
 
-local function BagAlert()
-    if not DB.settings.bagAlert then return end
-    local msg = "Well-Rested 3/3 - you can get up!"
+-- Chat line + raid warning + sound. Used by the bag and the XP food reminder.
+function J.Alert(msg)
     Print("|cff7cff7c" .. msg .. "|r")
     if RaidNotice_AddMessage and RaidWarningFrame then
         pcall(RaidNotice_AddMessage, RaidWarningFrame, msg, ChatTypeInfo and ChatTypeInfo.RAID_WARNING or { r = 1, g = 1, b = 1 })
     end
     if PlaySound then pcall(PlaySound, (SOUNDKIT and SOUNDKIT.READY_CHECK) or 8960, "Master") end
+end
+local function BagAlert()
+    if DB.settings.bagAlert then J.Alert("Well-Rested 3/3 - you can get up!") end
 end
 
 local ALERT_GAP = 1800   -- at most one 3/3 alert per 30 minutes (bag cooldown is 1 hour)
@@ -436,7 +442,10 @@ local function BuildUI()
     dings:SetScript("OnClick", function() ShowList("dings") end)
     local alts = SmallButton(frame, "Alts", 44); alts:SetPoint("RIGHT", dings, "LEFT", -4, 0)
     alts:SetScript("OnClick", function() ShowList("alts") end)
-    local help = SmallButton(frame, "?", 20); help:SetPoint("RIGHT", alts, "LEFT", -4, 0)
+    local food = SmallButton(frame, "Food", 38); food:SetPoint("RIGHT", alts, "LEFT", -4, 0)
+    food:SetScript("OnClick", function() if J.Food then J.Food.Toggle() end end)
+    frame.FoodButton = food
+    local help = SmallButton(frame, "?", 20); help:SetPoint("RIGHT", food, "LEFT", -4, 0)
     help:SetScript("OnClick", function() if _G.VoidMarkJourneyHelp then _G.VoidMarkJourneyHelp.Open() end end)
     frame.HelpButton = help
 
@@ -523,8 +532,10 @@ SlashCmdList.VOIDMARKJOURNEY = function(msg)
     elseif msg == "lock" then DB.settings.locked = not DB.settings.locked; Print(DB.settings.locked and "Window locked." or "Window unlocked.")
     elseif msg == "reset" then session.start = GetTime(); session.gained = 0; session.samples = {}; Print("XP/hour reset."); J.Refresh()
     elseif msg == "bagalert" then DB.settings.bagAlert = not DB.settings.bagAlert; Print("Sleeping bag alert " .. (DB.settings.bagAlert and "on." or "off."))
+    elseif msg == "food" then if J.Food then J.Food.Toggle() end
+    elseif msg == "foodalert" then DB.settings.foodAlert = not DB.settings.foodAlert; Print("XP food alert " .. (DB.settings.foodAlert and "on." or "off."))
     elseif msg:match("^help") or msg == "faq" or msg == "commands" then
         if _G.VoidMarkJourneyHelp then _G.VoidMarkJourneyHelp.Open(msg:match("^help%s+(.+)$")) return end
-        Print("/journey - show/hide  ·  alts  ·  dings  ·  lock  ·  reset (XP/hr)  ·  bagalert  ·  help")
+        Print("/journey - show/hide  ·  alts  ·  dings  ·  lock  ·  reset (XP/hr)  ·  bagalert  ·  food  ·  foodalert  ·  help")
     else J.Toggle() end
 end

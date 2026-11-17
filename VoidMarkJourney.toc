@@ -1,9 +1,10 @@
 ## Interface: 16001
 ## Title: VoidMark Journey
-## Notes: Leveling companion: XP/hour, time to level, rested XP, Cozy Sleeping Bag timer, alts and ding history.
+## Notes: Leveling companion: XP/hour, time to level, rested XP, Cozy Sleeping Bag timer, XP food reminder, alts and ding history.
 ## Author: VoidMark
-## Version: 0.1.5
+## Version: 0.1.6
 ## SavedVariables: VoidMarkJourneyDB
 Help.lua
 VoidMarkJourney.lua
+Food.lua
 AutoInvite.lua
