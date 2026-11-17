@@ -4,7 +4,7 @@
 local addonName = ...
 VoidMarkJourney = VoidMarkJourney or {}
 local J = VoidMarkJourney
-J.VERSION = "0.1.6"
+J.VERSION = "0.1.7"
 
 local BAG_ITEM = 211527          -- Cozy Sleeping Bag
 local WELL_RESTED = 429959       -- Well-Rested (+1% XP per stack)
@@ -304,7 +304,7 @@ function J.HistoryRows()
     end
     return rows
 end
-local COLS = { { x = 10, w = 40 }, { x = 52, w = 46 }, { x = 100, w = 124 }, { x = 226, w = 58, right = true }, { x = 290, w = 30, right = true } }
+local COLS = { { x = 10, w = 40 }, { x = 52, w = 46 }, { x = 100, w = 112 }, { x = 214, w = 58, right = true }, { x = 276, w = 44, right = true } }
 local listCells = {}
 local HEAD = { "Level", "Date", "Zone", "Played", "Deaths" }
 
