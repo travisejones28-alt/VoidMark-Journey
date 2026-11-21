@@ -90,3 +90,19 @@ AURA=nil; Emit('UNIT_AURA','player'); Advance(600)
 for n=1,3 do AURA={applications=n}; Emit('UNIT_AURA','player'); Advance(60) end
 eq(alerts,after+1,'new bag session did not alert'); AURA=nil; Emit('UNIT_AURA','player')
 print('PASS: no repeat bag alerts on hidden reads, XP/hr + level crossing, dings/deaths/played, rested bubbles, sleeping bag countdown + single alert, alts offline rested, secrets, slash commands')
+
+-- 0.1.10: realm name empty all session -> same character record, history kept;
+-- a record already saved under "Name - " joins it.
+do
+ local DBc=VoidMarkJourneyDB.characters
+ local real=DBc['Voidmark Soulreaver - CAMWOW US2']; assert(real and #real.dings>=1,'setup')
+ local before=#real.dings
+ DBc['Voidmark Soulreaver - ']={name='Voidmark Soulreaver',realm='',savedAt=real.savedAt+10,level=56,dings={{level=56,at=real.savedAt+5,zone='Winterspring',played=19440,deaths=1}},levelPlayed=0,levelDeaths=0}
+ local g=GetRealmName; GetRealmName=function() return '' end
+ Emit('ADDON_LOADED','VoidMarkJourney')
+ GetRealmName=g
+ eq(DBc['Voidmark Soulreaver - '],nil,'blank-realm record left')
+ local c2=DBc['Voidmark Soulreaver - CAMWOW US2']; assert(c2,'real record gone')
+ eq(#c2.dings,before+1,'history not combined'); eq(c2.dings[1].level,56,'newest ding first')
+ eq(J.char,c2,'opened the wrong record')
+end

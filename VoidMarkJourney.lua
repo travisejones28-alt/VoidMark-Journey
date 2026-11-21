@@ -4,7 +4,7 @@
 local addonName = ...
 VoidMarkJourney = VoidMarkJourney or {}
 local J = VoidMarkJourney
-J.VERSION = "0.1.9"
+J.VERSION = "0.1.10"
 
 local BAG_ITEM = 211527          -- Cozy Sleeping Bag
 local WELL_RESTED = 429959       -- Well-Rested (+1% XP per stack)
@@ -39,9 +39,16 @@ local function Print(msg) DEFAULT_CHAT_FRAME:AddMessage("|cffb86cff[Journey]|r "
 J.Readable, J.Safe, J.Print = Readable, Safe, Print
 
 -- Forever names are "First Surname": UnitName returns the surname second.
+-- WoW Forever can give an EMPTY realm name for a whole session; "" counts as
+-- missing (it used to start a new, empty character record).
+local function GameRealm()
+    local r = Safe(GetRealmName)
+    if type(r) == "string" and r ~= "" then return r end
+    return nil
+end
 local function CharacterName()
     local first, second = Safe(UnitName, "player")
-    local realm = Safe(GetRealmName) or "Unknown"
+    local realm = GameRealm() or "Unknown"
     local name = first or "Unknown"
     if type(second) == "string" and second ~= "" and second:gsub("%s", ""):lower() ~= realm:gsub("%s", ""):lower() then
         name = name .. " " .. second
@@ -76,6 +83,36 @@ end
 ---------------------------------------------------------------------------
 -- Saved data
 ---------------------------------------------------------------------------
+-- Records saved as "Name - " or "Name - Unknown" (realm missing that session)
+-- join the real one: level history combined, the newer copy's progress kept.
+function J.MergeBlankRealm(db, name, realKey)
+    for _, bad in ipairs({ name .. " - ", name .. " - Unknown" }) do
+        local b = db.characters[bad]
+        if bad ~= realKey and type(b) == "table" then
+            local r = db.characters[realKey]
+            if type(r) ~= "table" then
+                db.characters[realKey] = b
+            else
+                local seen, all = {}, {}
+                for _, list in ipairs({ r.dings or {}, b.dings or {} }) do
+                    for _, d in ipairs(list) do
+                        local k = type(d) == "table" and (tostring(d.level) .. "@" .. tostring(d.at))
+                        if k and not seen[k] then seen[k] = true; all[#all + 1] = d end
+                    end
+                end
+                table.sort(all, function(x, y) return (tonumber(x.at) or 0) > (tonumber(y.at) or 0) end)
+                while #all > 60 do table.remove(all) end
+                local newer = (tonumber(b.savedAt) or 0) > (tonumber(r.savedAt) or 0) and b or r
+                local older = newer == b and r or b
+                for k, v in pairs(older) do if newer[k] == nil then newer[k] = v end end
+                newer.dings = all
+                db.characters[realKey] = newer
+            end
+            db.characters[bad] = nil
+        end
+    end
+end
+
 local function InitDB()
     VoidMarkJourneyDB = type(VoidMarkJourneyDB) == "table" and VoidMarkJourneyDB or {}
     DB = VoidMarkJourneyDB
@@ -85,7 +122,19 @@ local function InitDB()
     if DB.settings.bagAlert == nil then DB.settings.bagAlert = true end
     if DB.settings.foodAlert == nil then DB.settings.foodAlert = true end
     local name, realm = CharacterName()
+    -- No realm from the game: use the realm this character was last saved
+    -- under, so its level history and food setup stay with it.
+    if not GameRealm() then
+        local bestAt
+        for _, c in pairs(DB.characters) do
+            if type(c) == "table" and c.name == name and type(c.realm) == "string" and c.realm ~= "" and c.realm ~= "Unknown"
+                and (not bestAt or (tonumber(c.savedAt) or 0) > bestAt) then
+                realm, bestAt = c.realm, tonumber(c.savedAt) or 0
+            end
+        end
+    end
     key = name .. " - " .. realm
+    if realm ~= "Unknown" then J.MergeBlankRealm(DB, name, key) end
     DB.characters[key] = type(DB.characters[key]) == "table" and DB.characters[key] or {}
     char = DB.characters[key]
     char.name, char.realm = name, realm
