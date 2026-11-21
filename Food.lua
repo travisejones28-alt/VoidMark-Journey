@@ -47,45 +47,67 @@ local function ItemSpell(id)
     return tonumber(spell)
 end
 
--- Every readable buff on the player: { [spellId] = { exp=, dur= } }.
--- ok=false when the client hid any of them (secret / combat).
+-- Every readable buff on the player: { [spellId] = { exp=, dur=, name= } }.
+-- ok=false when the client hid any of them (secret / combat). A hidden buff is
+-- skipped, not the end of the list: the food buff can sit after it.
 local function Buffs()
     local out, ok = {}, true
     for i = 1, 40 do
-        local id, exp, dur
+        local id, exp, dur, name
         if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
             local good, a = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, "HELPFUL")
-            if not good or (a ~= nil and J.Readable(a) == nil) then ok = false; break end
-            if type(a) ~= "table" then break end
-            id, exp, dur = J.Readable(a.spellId), J.Readable(a.expirationTime), J.Readable(a.duration)
+            if not good or (a ~= nil and J.Readable(a) == nil) then ok = false
+            elseif type(a) ~= "table" then break
+            else id, exp, dur, name = J.Readable(a.spellId), J.Readable(a.expirationTime), J.Readable(a.duration), J.Readable(a.name) end
         elseif UnitBuff then
-            local good, name, _, _, _, d, e, _, _, _, sid = pcall(UnitBuff, "player", i)
-            if not good or (name ~= nil and J.Readable(name) == nil) then ok = false; break end
-            if not name then break end
-            id, exp, dur = J.Readable(sid), J.Readable(e), J.Readable(d)
+            local good, n, _, _, _, d, e, _, _, _, sid = pcall(UnitBuff, "player", i)
+            if not good or (n ~= nil and J.Readable(n) == nil) then ok = false
+            elseif not n then break
+            else id, exp, dur, name = J.Readable(sid), J.Readable(e), J.Readable(d), n end
         else
             ok = false; break
         end
         id = tonumber(id)
-        if id then out[id] = { exp = tonumber(exp) or 0, dur = tonumber(dur) or 0 } end
+        if id then out[id] = { exp = tonumber(exp) or 0, dur = tonumber(dur) or 0, name = type(name) == "string" and name or nil } end
     end
     return out, ok
+end
+
+-- A buff you cast yourself (Fortitude, Inner Fire...) is never the food buff.
+local function OwnSpell(id)
+    return (IsPlayerSpell and J.Safe(IsPlayerSpell, id)) or (IsSpellKnown and J.Safe(IsSpellKnown, id)) or false
+end
+-- Food buffs are named "Well Fed" or after the food itself.
+local function FoodNamed(b, item)
+    if not b.name then return false end
+    local n = b.name:lower()
+    local food = ItemName(item):lower()
+    return n == "well fed" or n == food or n:find("fed", 1, true) ~= nil
 end
 
 -- The food's buff: expiration (GetTime clock) or nil, and known (false = hidden read).
 local function BuffExpiry()
     local item = settings().foodItem
     if not item then return nil, true end
-    local spells = {}
     local learned = settings().foodBuffs and settings().foodBuffs[item]
+    -- 0.1.9: an earlier version could learn one of your own spells as the food buff.
+    if learned and OwnSpell(learned) then settings().foodBuffs[item] = nil; learned = nil end
+    local spells = {}
     if learned then spells[#spells + 1] = learned end
     local own = ItemSpell(item)
     if own and own ~= learned then spells[#spells + 1] = own end
-    if #spells == 0 then return nil, true end
     local buffs, ok = Buffs()
     for _, id in ipairs(spells) do
         local b = buffs[id]
         if b and b.exp > 0 and (id == learned or b.dur >= MIN_BUFF) then return b.exp, true end
+    end
+    -- Not learned yet (or learned wrong): a long "Well Fed"-type buff counts.
+    for id, b in pairs(buffs) do
+        if b.exp > 0 and b.dur >= MIN_BUFF and not SKIP[id] and FoodNamed(b, item) and not OwnSpell(id) then
+            settings().foodBuffs = settings().foodBuffs or {}
+            settings().foodBuffs[item] = id
+            return b.exp, true
+        end
     end
     return nil, ok
 end
@@ -96,10 +118,12 @@ local function TryLearn()
     if GetTime() - learn.at > LEARN_WINDOW then learn = nil; return end
     local buffs, ok = Buffs()
     if not ok then return end
-    local best, bestDur
+    -- A food-named buff wins; otherwise the longest new buff. Never your own spells.
+    local best, bestScore
     for id, b in pairs(buffs) do
-        if not learn.before[id] and not SKIP[id] and b.dur >= MIN_BUFF and (not bestDur or b.dur > bestDur) then
-            best, bestDur = id, b.dur
+        if not learn.before[id] and not SKIP[id] and b.dur >= MIN_BUFF and not OwnSpell(id) then
+            local score = (FoodNamed(b, settings().foodItem) and 1e9 or 0) + b.dur
+            if not bestScore or score > bestScore then best, bestScore = id, score end
         end
     end
     if best then

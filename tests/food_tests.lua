@@ -74,6 +74,21 @@ local c=VoidMarkJourneyDB.characters['Voidmark Soulreaver - CAMWOW US2']; local 
 c.level=60; Advance(1); assert(not btn:IsShown(),'shown at max level'); c.level=lv; Advance(1)
 -- Out of food in bags.
 ITEMS[999].count=0; J.Food.Update(); assert(btn.Time:GetText():find('none left')); ITEMS[999].count=5
+-- 0.1.9: your own long buff cast right after eating is never learned as the food buff.
+KNOWN={[10938]=true}
+S.foodBuffs[999]=nil; ITEMS[999].count=5
+local fort={spellId=10938,name='Power Word: Fortitude',expirationTime=NOW+3600,duration=3600}
+BUFFS={}; click('LeftButton')
+BUFFS={fort,{spellId=7777,name='Well Fed',expirationTime=NOW+1800,duration=1800}}; Emit('UNIT_AURA','player')
+eq(S.foodBuffs[999],7777,'learned own spell instead of food')
+-- A wrongly learned own spell is dropped and the Well Fed buff is found without eating again.
+S.foodBuffs[999]=10938; BUFFS={fort,{spellId=7777,name='Well Fed',expirationTime=NOW+1800,duration=1800}}
+Emit('UNIT_AURA','player'); assert(not btn.Time:GetText():find('EAT'),'EAT while fed: '..btn.Time:GetText()); eq(S.foodBuffs[999],7777)
+-- A hidden buff earlier in the list does not hide the food buff after it.
+BUFFS={SECRET,{spellId=7777,name='Well Fed',expirationTime=NOW+1700,duration=1800}}; Emit('UNIT_AURA','player')
+assert(not btn.Time:GetText():find('EAT'),'EAT behind a hidden buff: '..btn.Time:GetText())
+KNOWN={}; BUFFS={}; for i=1,20 do Advance(1) end
+
 -- Combat: setting waits, attribute untouched.
 COMBAT=true; CURSOR=1234; btn:GetScript('OnReceiveDrag')(btn); eq(S.foodItem,999,'changed in combat'); COMBAT=false; CURSOR=nil
 -- Down-half of a click is ignored (no double set/clear).

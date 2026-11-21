@@ -68,3 +68,6 @@ C_Timer={NewTicker=function(_,fn) TICKERS[#TICKERS+1]=fn; return {Cancel=functio
 SlashCmdList={}
 function Emit(e,...) for _,f in ipairs(frames) do if f._events[e] and f._scripts.OnEvent then f._scripts.OnEvent(f,e,...) end end end
 function Advance(sec) NOW=NOW+sec; CLOCK=CLOCK+sec; for _,t in ipairs(TICKERS) do t() end end
+
+KNOWN={}
+function IsPlayerSpell(id) return KNOWN[id] or false end
