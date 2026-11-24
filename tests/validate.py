@@ -11,10 +11,13 @@ L.globals().HELP=(ROOT/'Help.lua').read_text()
 L.execute('assert(loadstring(HELP,"Help.lua"))("VoidMarkJourney",{})')
 L.globals().SRC=(ROOT/'VoidMarkJourney.lua').read_text()
 L.execute('assert(loadstring(SRC,"VoidMarkJourney.lua"))("VoidMarkJourney",{})')
+L.globals().LINK=(ROOT/'Link.lua').read_text()
+L.execute('assert(loadstring(LINK,"Link.lua"))("VoidMarkJourney",{})')
 L.globals().FOOD=(ROOT/'Food.lua').read_text()
 L.execute('assert(loadstring(FOOD,"Food.lua"))("VoidMarkJourney",{})')
 L.execute((Path(__file__).parent/'journey_tests.lua').read_text())
 L.execute((Path(__file__).parent/'food_tests.lua').read_text())
+L.execute((Path(__file__).parent/'link_tests.lua').read_text())
 
 # Help window lists every /journey subcommand the handler accepts.
 import re

@@ -11,10 +11,11 @@ it doesn't touch quests or routes, only the numbers they don't show.
   Counts down the buff and alerts (sound + raid warning) at 60 sec left and when it runs out.
   Shift+drag to move, Shift+right-click to clear.
 - **Alts** — every character's level and rested XP, including rested built up while logged out.
+  Characters on your **other WoW account** are listed too (marked *other account*): whenever a character from each account is online at the same time, the two swap their character lists. Your VoidMark Market sync partner is linked automatically; otherwise `/journey link First Surname` with one of the other account's characters.
 - **Dings** — each level with date, zone, time played that level, and deaths.
 
 ## Commands
-`/journey` (or `/vmj`) show/hide · `/journey alts` · `/journey dings` · `/journey lock` ·
+`/journey` (or `/vmj`) show/hide · `/journey alts` · `/journey link` · `/journey dings` · `/journey lock` ·
 `/journey reset` (restart XP/hr) · `/journey bagalert` (toggle the 3/3 alert) · `/journey food` (food icon) · `/journey foodalert` · `/journey help` (or the **?** button: searchable FAQ and every command)
 
 Drag the window to move it. Saved per account in `VoidMarkJourneyDB`.

@@ -4,7 +4,7 @@
 local addonName = ...
 VoidMarkJourney = VoidMarkJourney or {}
 local J = VoidMarkJourney
-J.VERSION = "0.1.10"
+J.VERSION = "0.1.11"
 
 local BAG_ITEM = 211527          -- Cozy Sleeping Bag
 local WELL_RESTED = 429959       -- Well-Rested (+1% XP per stack)
@@ -137,6 +137,7 @@ local function InitDB()
     if realm ~= "Unknown" then J.MergeBlankRealm(DB, name, key) end
     DB.characters[key] = type(DB.characters[key]) == "table" and DB.characters[key] or {}
     char = DB.characters[key]
+    J.db, J.char = DB, char
     char.name, char.realm = name, realm
     char.dings = type(char.dings) == "table" and char.dings or {}
     char.levelPlayed = tonumber(char.levelPlayed) or 0
@@ -364,14 +365,21 @@ local function ListLines(mode)
         for k, c in pairs(DB.characters) do
             if type(c) == "table" and c.level then rows[#rows + 1] = c end
         end
+        -- 0.1.11: characters from your other WoW account (see Link.lua).
+        for k, c in pairs(DB.remote or {}) do
+            if type(c) == "table" and c.level and not DB.characters[k] then rows[#rows + 1] = c end
+        end
         table.sort(rows, function(a, b) return (a.level or 0) > (b.level or 0) end)
         for _, c in ipairs(rows) do
             local rested, maxed = J.EstimateRested(c, time())
             local pct = (c.maxXP and c.maxXP > 0) and math.floor(rested / c.maxXP * 100 + 0.5) or 0
             local tag = maxed and "max level" or (pct >= 150 and "|cff7cff7cfull rested|r" or (pct .. "% rested"))
-            lines[#lines + 1] = string.format("%s  |cffb88cffLv %d|r  %s", c.name or "?", c.level or 0, tag)
+            lines[#lines + 1] = string.format("%s  |cffb88cffLv %d|r  %s%s", c.name or "?", c.level or 0, tag, c.remote and "  |cff9d9d9d(other account)|r" or "")
         end
         if #lines == 0 then lines[1] = "Log in on your other characters once to list them here." end
+        if not next(DB.remote or {}) then
+            lines[#lines + 1] = "|cff9d9d9dOther account: have one character from each account online at the same time once.|r"
+        end
     else
         for _, row in ipairs(J.HistoryRows()) do
             lines[#lines + 1] = table.concat(row, "  ")
@@ -430,6 +438,11 @@ local function ShowList(mode)
     end
     list:Show()
 end
+-- Redraw the open Characters list (other-account characters arrived).
+function J.RefreshList()
+    if list and list:IsShown() and list.mode == "alts" then list:Hide(); ShowList("alts") end
+end
+J.ListLines = ListLines
 
 function J.Refresh()
     if not frame or not frame:IsShown() then return end
@@ -578,6 +591,7 @@ SlashCmdList.VOIDMARKJOURNEY = function(msg)
     if not DB then return end
     if msg == "alts" then J.Toggle(true); ShowList("alts")
     elseif msg == "dings" then J.Toggle(true); ShowList("dings")
+    elseif msg:match("^link") then if J.Link then J.Link.LinkName(msg:match("^link%s*(.-)$")) end
     elseif msg == "lock" then DB.settings.locked = not DB.settings.locked; Print(DB.settings.locked and "Window locked." or "Window unlocked.")
     elseif msg == "reset" then session.start = GetTime(); session.gained = 0; session.samples = {}; Print("XP/hour reset."); J.Refresh()
     elseif msg == "bagalert" then DB.settings.bagAlert = not DB.settings.bagAlert; Print("Sleeping bag alert " .. (DB.settings.bagAlert and "on." or "off."))
